@@ -37,9 +37,23 @@ class Cell:
 		print("Unaccounted for condition in cell.remove()")
 		return False
 
-	def flatten(self, color, piece):
-		print("Flatten is not implemented yet")
-		return False
+	def flatten(self, stack):
+		if (self.placeable):
+			print("There is nothing in this Cell to flatten")
+			return False
+		if (self.pieces[-1].type != Piece.PIECE_WALL):
+			print("There is no wall to flatten in this Cell")
+			return False
+		if (len(stack) != 1):
+			print("A wall can only be flattened by a capstone on its own")
+			return False
+		if (stack[0].type != Piece.PIECE_CAPSTONE):
+			print("A wall can only be flattened by a capstone")
+			return False
+
+		self.pieces[-1].type = Piece.PIECE_STONE
+		self.pieces = self.pieces + stack
+		return True
 
 	@property
 	def owner(self):

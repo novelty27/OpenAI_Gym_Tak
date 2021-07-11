@@ -9,19 +9,6 @@ class Piece:
 	def __init__(self, pieceType=PIECE_STONE, color="?"):
 		self.type = pieceType
 		self.color = color
-		self.stackable = True
-		self.ableToFlatten = False
-		self.ableToBeFlattened = False
-		if (pieceType == Piece.PIECE_STONE):
-			pass
-		elif (pieceType == Piece.PIECE_WALL):
-			self.stackable = False
-			self.ableToBeFlattened = True
-		elif (pieceType == Piece.PIECE_CAPSTONE):
-			self.stackable = False
-			self.ableToFlatten = True
-		else:
-			print("Unaccounted for piece type")
 
 	@property
 	def color(self):
@@ -29,19 +16,37 @@ class Piece:
 		return self._color[0]
 
 	@color.setter
-	def color(self,value):
+	def color(self, color):
 		""" Setter for 'color' """
-		self._color = value
+		self._color = color
 
 	@property
 	def type(self):
 		""" Getter for 'type' """
-		return self._type[0]
+		return self._type
 
 	@type.setter
-	def type(self,value):
+	def type(self, pieceType):
 		""" Setter for 'type' """
-		self._type = value
+		self._type = pieceType
+		if (pieceType == Piece.PIECE_STONE):
+			self.stackable = True
+			self.ableToFlatten = False
+			self.ableToBeFlattened = False
+			self.isRoad = True
+		elif (pieceType == Piece.PIECE_WALL):
+			self.stackable = False
+			self.ableToFlatten = False
+			self.ableToBeFlattened = True
+			self.isRoad = False
+		elif (pieceType == Piece.PIECE_CAPSTONE):
+			self.stackable = False
+			self.ableToFlatten = True
+			self.ableToBeFlattened = False
+			self.isRoad = True
+		else:
+			print("Unaccounted for piece type")
+			return False
 
 	def __str__(self):
-		return self.color+self.type
+		return self.color+self.type[0]

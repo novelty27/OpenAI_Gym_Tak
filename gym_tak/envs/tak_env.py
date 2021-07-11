@@ -23,9 +23,20 @@ class TakEnv(gym.Env):
 						self.playerColors[1], 
 						self.gameDataByBoardSize[boardSize][2], 
 						self.gameDataByBoardSize[boardSize][3])
+		self.currentPlayer = self.player1
 
 	def step(self, action):
-		return self.board.play(self.player1, action)
+		play = self.board.play(self.currentPlayer, action)
+		if (play == Board.STATE_MOVE_SUCCESSFUL):
+			self.switchPlayer()
+			return play
+		elif (play == Board.STATE_MOVE_UNSUCCESSFUL):
+			return play
+		elif (play == Board.STATE_MOVE_CONTINUE):
+			return play
+		else:
+			print("Unknown state after move:", play)
+			return False
 
 	def reset(self):
 		self.board = None
@@ -34,5 +45,14 @@ class TakEnv(gym.Env):
 		return self.__init__()
 
 	def render(self, mode='human', close=False):
-		output = str(self.board) + '\n'
+		output = self.currentPlayer.color + "`s turn\n" + str(self.board) + '\n'
 		return output
+
+	def switchPlayer(self):
+		if (self.currentPlayer == self.player1):
+			self.currentPlayer = self.player2
+		else:
+			self.currentPlayer = self.player1
+
+	def whichPlayersTurn(self):
+		return self.currentPlayer.color
