@@ -34,5 +34,5 @@ class TakEnv(gym.Env):
 		return self.__init__()
 
 	def render(self, mode='human', close=False):
-		output = str(self.board) + '\n' + self.player1.name + "\n" + self.player2.name
+		output = str(self.board) + '\n'
 		return output
