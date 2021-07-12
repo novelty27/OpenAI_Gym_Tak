@@ -12,6 +12,12 @@ class Board:
 	STATE_MOVE_UNSUCCESSFUL = False
 	STATE_MOVE_CONTINUE = "move_continue"
 
+	DIRECTION_UP = "up"
+	DIRECTION_DOWN = "down"
+	DIRECTION_LEFT = "left"
+	DIRECTION_RIGHT = "right"
+	DIRECTION_NONE = False
+
 	def __init__(self, gameData):
 		self.height = gameData[0]
 		self.width = gameData[1]
@@ -21,6 +27,8 @@ class Board:
 		self.maxHeight = 2 * (self.pieces + self.capstones)
 		self.cells = [[Cell() for x in range(self.width)] for y in range(self.height)]
 		self.moveState = Board.STATE_MOVE_UNSUCCESSFUL
+		self.moveCoordinate = False
+		self.moveDirection = Board.DIRECTION_NONE
 
 	def cells(self):
 		return self.cells
@@ -36,6 +44,8 @@ class Board:
 		else:
 			# Not in a move. Make sure board's state and carryLimit are reset
 			self.moveState = Board.STATE_MOVE_UNSUCCESSFUL
+			self.moveCoordinate = False
+			self.moveDirection = Board.DIRECTION_NONE
 			self.carryLimit = self.width
 
 		if (action[0] == Board.ACTION_PLACE):
@@ -52,12 +62,22 @@ class Board:
 			return self.moveState
 
 		elif (action[0] == Board.ACTION_MOVE or action[0] == Board.ACTION_FLATTEN):
-			#grab input parameters andadjust human index to 0 based index
-			startX = action[1]-1
-			startY = action[2]-1
-			endX = action[3]-1
-			endY = action[4]-1
-			stackHeight = action[5]
+			if (self.moveState == Board.STATE_MOVE_CONTINUE):
+				if (len(action) != 2):
+					print("You are moving. Please pass in two arguments: an action and a stack height")
+					return False
+				startX, startY = self.moveCoordinate
+				endX, endY = self.getCoordinatesOfDirection(startX, startY, self.moveDirection)
+				stackHeight = action[1]
+			else:
+				#grab input parameters and adjust human index to 0 based index
+				if (len(action) != 5):
+					print("Please pass in 4 arguments: an action, a startX, a startY, a direction, and a stack height")
+					return False
+				startX = action[1]-1
+				startY = action[2]-1
+				endX, endY = self.getCoordinatesOfDirection(startX, startY, action[3])
+				stackHeight = action[4]
 
 			if (not self.isMoveLegal(player, startX, startY, endX, endY, stackHeight)):
 				return False
@@ -88,6 +108,8 @@ class Board:
 
 			if (self.carryLimit>=1):
 				self.moveState = Board.STATE_MOVE_CONTINUE
+				self.moveCoordinate = endX, endY
+				self.moveDirection = self.getMoveDirection(startX, startY, endX, endY)
 			elif (self.carryLimit == 0):
 				self.moveState = Board.STATE_MOVE_SUCCESSFUL
 			else:
@@ -149,29 +171,45 @@ class Board:
 		yLength = abs(startY-endY)
 		return max(xLength, yLength)
 
-	# @property
-	# def moveState(self):
-	# 	""" Getter for 'moveState' """
-	# 	return self._moveState
+	def getMoveDirection(self, startX, startY, endX, endY):
+		if (not self.isMoveCardinal(startX, startY, endX, endY)):
+			print("That is not a cardinal move")
+			return False
 
-	# @moveState.setter
-	# def moveState(self, moveState):
-	# 	""" Setter for 'moveState' """
-	# 	if (moveState == Board.STATE_MOVE_SUCCESSFUL):
-	# 		self.carryLimit = self.width
-	# 	self._moveState = moveState
+		if (startX == endX and startY < endY):
+			return Board.DIRECTION_UP
+		elif (startX == endX and startY > endY):
+			return Board.DIRECTION_DOWN
+		elif (startX > endX and startY == endY):
+			return Board.DIRECTION_LEFT
+		elif (startX < endX and startY == endY):
+			return Board.DIRECTION_RIGHT
+		else:
+			print("Unknown direction. Perhaps you haven't moved")
+			return False
 
-	# @property
-	# def carryLimit(self):
-	# 	""" Getter for 'carryLimit' """
-	# 	return self._carryLimit
+	def getCoordinatesOfDirection(self, startX, startY, direction, length=1):
+		if (not self.isIndexInBounds(startX, startY)):
+			print("Starting coordinates are out of bounds")
+			return -1, -1
 
-	# @carryLimit.setter
-	# def carryLimit(self, carryLimit):
-	# 	""" Setter for 'carryLimit' - debugging code """
-	# 	print("Carry Limit:", carryLimit)
-	# 	self._carryLimit = carryLimit
+		if (direction == Board.DIRECTION_UP):
+			endX, endY = startX, startY - length
+		elif (direction == Board.DIRECTION_DOWN):
+			endX, endY = startX, startY + length
+		elif (direction == Board.DIRECTION_LEFT):
+			endX, endY = startX - length, startY
+		elif (direction == Board.DIRECTION_RIGHT):
+			endX, endY = startX + length, startY
+		else:
+			print("Unknown direction for coordinates:",direction)
+			endX, endY = -1, -1
 
+		if (not self.isIndexInBounds(endX, endY)):
+			print("Ending coordinates are out of bounds")
+			return -1, -1
+		else:
+			return endX, endY
 
 	def __str__(self):
 		boardString = ""
