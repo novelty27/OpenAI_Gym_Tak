@@ -211,9 +211,71 @@ class Board:
 		else:
 			return endX, endY
 
+	def checkWin(self, player):
+		neighbors = self.getNeighborsList(player)
+		print(neighbors)
+		return False
+
+	def getNeighborsList(self, player):
+		# Create a list of all the cells which will contain that cell's neighbors.
+		# Make the first element of the list "start" and the last element "end"
+		# The other elements will be indexed as such:
+		#   x 0  1  2  3  4
+		# y _______________
+		# 0 | 0  1  2  3  4
+		# 1 | 5  6  7  8  9
+		# 2 |10 11 12 13 14
+		# 3 |15 16 17 18 19
+		# 4 |20 21 22 23 24
+		#
+		# So self.cells[2][1] will be cell 7
+
+		neighbors = [0] * ((self.width * self.height) + 2)
+		neighbors[0], neighbors[-1] = [], []
+
+		#Loop through all the board's cells
+		for y in range(self.height):
+			for x in range(self.width):
+				i = y * self.height + x + 1
+				# Only add cells belong to the player to the neighbor's list
+				if (self.cells[x][y].owner == player.color[0]):
+					#Find all friendly neighbors for the cell
+					neighbors[i] = i - 1 , self.getCellNeighbors(x, y, player)
+					# If cell is in the far left column, link it up with the start node then find all friendly neighbors
+					if (x == 0):
+						neighbors[0].append([x, y])
+					# If the cell is in the far right column, find all friendly neighbors and give it a link to the end node
+					elif (x == self.width - 1):
+						neighbors[i][1].append("end")
+
+		neighbors[0] = "start", neighbors[0]
+		neighbors[-1] = "end"
+		return neighbors
+
+	def getCellNeighbors(self, x, y, player=None, length=1):
+		#initialize the return array
+		neighbors = []
+
+		# Coordinate modifiers for directions: Up, Down, Left, Right
+		directions = [[0, -1*length], [0, length], [-1*length, 0], [length, 0]]
+
+		#If player is passed in, only return friendly neighbors
+		if (player):
+			playerColor = player.color[0]
+			for i in range(len(directions)):
+				calcX, calcY = x+directions[i][0], y+directions[i][1]
+				if (self.isIndexInBounds(calcX, calcY) and self.cells[calcX][calcY].owner == playerColor):
+					neighbors.append([calcX, calcY])
+		#If no player is passed in, return all neighbors
+		else:
+			for i in range(len(directions)):
+				if (self.isIndexInBounds(x+directions[i][0], y+directions[i][1])):
+					neighbors.append([x+directions[i][0], y+directions[i][1]])
+		return neighbors
+
 	def __str__(self):
 		boardString = ""
-		for y in range(self.width):
+		for y in range(self.height):
 			for x in range(self.width):
 				boardString = boardString + " " + str(self.cells[x][y])
 			boardString = boardString + "\n\n"

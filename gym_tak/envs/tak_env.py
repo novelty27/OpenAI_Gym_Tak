@@ -38,6 +38,11 @@ class TakEnv(gym.Env):
 			print("Unknown state after move:", play)
 			return False
 
+	def checkWin(self):
+		""" Temporary method to allow end user to test winning functionality """
+		hasWon = self.board.checkWin(self.currentPlayer)
+		return hasWon
+
 	def reset(self):
 		self.board = None
 		self.player1 = None
