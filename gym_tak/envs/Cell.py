@@ -3,8 +3,9 @@ class Cell:
 
 	CELL_EMPTY = "___"
 
-	def __init__(self):
+	def __init__(self, name):
 		self.pieces = [Cell.CELL_EMPTY]
+		self.name = name
 		self._owner = None
 		self._placeable = True
 		self._stackable = True
@@ -75,8 +76,12 @@ class Cell:
 			return True
 		return self.pieces[-1].stackable
 
+	@property
+	def road(self):
+		return self.pieces[-1].isRoad
+
 	def __str__(self):
-		### Return the top piece plus a count of how many pieces are in the cell's stack
+		""" Return the top piece plus a count of how many pieces are in the cell's stack """
 		val = str(self.pieces[-1])
 		if (len(self.pieces) > 1):
 			return val + (str(len(self.pieces)-1))
