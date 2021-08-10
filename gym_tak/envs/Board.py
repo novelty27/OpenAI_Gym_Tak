@@ -38,6 +38,9 @@ class Board:
 	def cells(self):
 		return self.cells
 
+	def getCellByName(self, i):
+		return self.cells[i%self.width][int(i/self.height)]
+
 	def play(self, player, action):
 		if (self.moveState == Board.STATE_MOVE_CONTINUE and action[0] == Board.ACTION_PLACE):
 			# May want to check directionality here or we can do that in the move/flatten conditional branch
@@ -62,7 +65,10 @@ class Board:
 				return False
 
 			#Create piece object to give to the cell
-			piece = Piece(action[1], player.color)
+			piece = player.getPiece(action[1])
+			if (piece is None):
+				return False
+
 			self.moveState = self.cells[x][y].place(piece)
 			return self.moveState
 
@@ -216,7 +222,23 @@ class Board:
 		else:
 			return endX, endY
 
-	def checkWin(self, player):
+	def checkFullBoardWin(self):
+		#Count who owns more cells on the board (ignoring walls)
+		colorCount = {"w":0, "b":0}
+		for y in range(self.height):
+			for x in range (self.width):
+				cell = self.cells[x][y]
+				if (cell.owner and cell.road):
+					colorCount[cell.owner] += 1
+				elif (cell.owner is None):
+					return False
+		#If they are even, return true
+		if (colorCount['w'] == colorCount['b']):
+			return True
+		else:
+			return max(colorCount, key=colorCount.get)
+
+	def checkRoadWin(self, player):
 		neighbors = self.getNeighborsList(player)
 		return self.checkWinDirection(neighbors, Board.NODE_UP, Board.NODE_DOWN) or \
 			   self.checkWinDirection(neighbors, Board.NODE_LEFT, Board.NODE_RIGHT)
@@ -237,16 +259,16 @@ class Board:
 		else:
 			ignoredNodes = [Board.NODE_UP, Board.NODE_DOWN]
 
-		nonVisitedNeighbors = [start]
+		neighborsToVisit = [start]
 		visitedNeighbors = []
 		while (True):
 			#If theres no place left to search, break
-			if (len(nonVisitedNeighbors) == 0):
+			if (len(neighborsToVisit) == 0):
 				break
 
 			#Get the next cell to search from the list of non visited cells.
 			#Add this cell to the list of visited cells
-			currentCell = nonVisitedNeighbors.pop()
+			currentCell = neighborsToVisit.pop()
 			visitedNeighbors.append(currentCell)
 
 			#If you find the 'end' node, return True
@@ -257,12 +279,66 @@ class Board:
 			#If you haven't found the end, keep searching
 			#Add the list of the current cell's valid neighbors to the list of cells to visit
 			for i in neighbors[currentCell]:
-				if (i not in visitedNeighbors and i not in nonVisitedNeighbors and i not in ignoredNodes):
-					nonVisitedNeighbors.append(i)
-
+				if (i not in visitedNeighbors and i not in neighborsToVisit and i not in ignoredNodes):
+					neighborsToVisit.append(i)
 		return False
 
-	def getNeighborsList(self, player):
+	def checkTak(self, player):
+		neighbors = self.getNeighborsList(player, True)
+		return self.checkTakDirection(neighbors, player, Board.NODE_UP, Board.NODE_DOWN) or \
+			   self.checkTakDirection(neighbors, player, Board.NODE_LEFT, Board.NODE_RIGHT)
+
+	def checkTakDirection(self, neighbors, player, start, end):
+		if (not(
+			(start == Board.NODE_UP and end == Board.NODE_DOWN) or
+			(start == Board.NODE_DOWN and end == Board.NODE_UP) or
+			(start == Board.NODE_LEFT and end == Board.NODE_RIGHT) or
+			(start == Board.NODE_RIGHT and end == Board.NODE_LEFT)
+			)):
+			print("Start/End node missing or not checking Tak in an acceptable direction")
+			return False
+		startFriendlyNeighbors,startUnfriendlyNeighbors = self.getNodeNeighbors(neighbors, start, player)
+		endFriendlyNeighbors,endUnfriendlyNeighbors = self.getNodeNeighbors(neighbors, end, player)
+		intersection = set(startUnfriendlyNeighbors) & set(endUnfriendlyNeighbors)
+
+		for i in intersection:
+			# If there is an empty cell, return true
+			if (self.getCellByName(i).placeable):
+				return True
+			# if there is an intersection between all moveable pieces and this cell, return true
+			elif (False):
+				return True
+			else:
+				return False
+
+	def getNodeNeighbors(self, neighbors, node, player):
+		ignoredNodes = [Board.NODE_UP, Board.NODE_DOWN, Board.NODE_LEFT, Board.NODE_RIGHT]
+		neighborsToVisit = [node]
+		visitedNeighbors = []
+		unfriendlyNeighbors = []
+		while (True):
+			#If theres no place left to search, break
+			if (len(neighborsToVisit) == 0):
+				break
+
+			#Get the next cell to search from the list of non visited cells.
+			#Add this cell to the list of visited cells
+			currentCell = neighborsToVisit.pop()
+			visitedNeighbors.append(currentCell)
+
+			#If you still have places to visit, keep going
+			#Add the list of the current cell's friendly neighbors to the list of cells to visit
+			for i in neighbors[currentCell]:
+				if (i not in visitedNeighbors and i not in neighborsToVisit and i not in unfriendlyNeighbors and i not in ignoredNodes):
+					cell = self.getCellByName(i)
+					if (cell.owner == player.color[0] and cell.road):
+						neighborsToVisit.append(i)
+					else:
+						unfriendlyNeighbors.append(i)
+		visitedNeighbors.remove(node)
+		return visitedNeighbors, unfriendlyNeighbors
+
+	def getNeighborsList(self, player, tak=False):
 		# Create a dictionary of all the cells.
 		# The key will be the cell's name and the value with be the cell's neighbors
 		# Add a Up, Down, Left, and Right node to the respective sides of the board
@@ -281,54 +357,61 @@ class Board:
 		for y in range(self.height):
 			for x in range (self.width):
 				neighbors[y * self.height + x] = []
-		neighbors[Board.NODE_UP] = []
-		neighbors[Board.NODE_DOWN] = []
-		neighbors[Board.NODE_LEFT] = []
-		neighbors[Board.NODE_RIGHT] = []
+
+		neighbors[Board.NODE_UP] = self.getCellNeighbors(None, None, player, tak, Board.NODE_UP)
+		neighbors[Board.NODE_DOWN] = self.getCellNeighbors(None, None, player, tak, Board.NODE_DOWN)
+		neighbors[Board.NODE_LEFT] = self.getCellNeighbors(None, None, player, tak, Board.NODE_LEFT)
+		neighbors[Board.NODE_RIGHT] = self.getCellNeighbors(None, None, player, tak, Board.NODE_RIGHT)
 
 		#Loop through all the board's cells
 		for y in range(self.height):
 			for x in range(self.width):
 				i = y * self.height + x
-				# Only add cells belong to the player to the neighbor's list
+				# Only add cells that belong to the player to the neighbor's list
 				if (self.cells[x][y].owner == player.color[0]):
-					#Find all friendly neighbors for the cell
-					neighbors[i] = self.getCellNeighbors(x, y, player)
-					#If cell is on the edge of the board, link it up with that side's node
-					if (y == 0):
-						neighbors[Board.NODE_UP].append(self.cells[x][y].name)
-						neighbors[i].append(Board.NODE_UP)
-					if (y == self.height - 1):
-						neighbors[Board.NODE_DOWN].append(self.cells[x][y].name)
-						neighbors[i].append(Board.NODE_DOWN)
-					if (x == 0):
-						neighbors[Board.NODE_LEFT].append(self.cells[x][y].name)
-						neighbors[i].append(Board.NODE_LEFT)
-					if (x == self.width - 1):
-						neighbors[Board.NODE_RIGHT].append(self.cells[x][y].name)
-						neighbors[i].append(Board.NODE_RIGHT)
-
+					#If checking for Tak, find all neighbors for the cell
+					#Otherwise, find all friendly neighbors for the cell
+					neighbors[i] = self.getCellNeighbors(x, y, player, tak)
 		return neighbors
 
-	def getCellNeighbors(self, x, y, player=None, length=1):
+	def getCellNeighbors(self, x, y, player=None, takCheck=False, node=False, length=1):
+		# add in the ability to get neighbors for nodes. Also convert nodes to cells
 		#initialize the return array
 		neighbors = []
 
 		# Coordinate modifiers for directions: Up, Down, Left, Right
-		directions = [[0, -1*length], [0, length], [-1*length, 0], [length, 0]]
+		directions = [[0, -1*length, Board.NODE_UP],
+						[0, length, Board.NODE_DOWN],
+						[-1*length, 0, Board.NODE_LEFT],
+						[length, 0, Board.NODE_RIGHT]]
 
+		if(node):
+			if (node == Board.NODE_UP):
+				for i in range(self.width):
+					neighbors.append(self.cells[i][0].name)
+			if (node == Board.NODE_DOWN):
+				for i in range(self.width):
+					neighbors.append(self.cells[i][self.height-1].name)
+			if (node == Board.NODE_LEFT):
+				for i in range(self.height):
+					neighbors.append(self.cells[0][i].name)
+			elif (node == Board.NODE_RIGHT):
+				for i in range(self.height):
+					neighbors.append(self.cells[self.width-1][i].name)
 		#If player is passed in, only return friendly neighbors
-		if (player):
+		elif (player and not takCheck):
 			playerColor = player.color[0]
 			for i in range(len(directions)):
 				calcX, calcY = x+directions[i][0], y+directions[i][1]
 				if (self.isIndexInBounds(calcX, calcY) and self.cells[calcX][calcY].owner == playerColor and self.cells[x][y].road):
 					neighbors.append(self.cells[calcX][calcY].name)
-		#If no player is passed in, return all neighbors
+		#If no player is passed in or we are checking for Tak, return all neighbors
 		else:
 			for i in range(len(directions)):
 				if (self.isIndexInBounds(x+directions[i][0], y+directions[i][1])):
 					neighbors.append(self.cells[x+directions[i][0]][y+directions[i][1]].name)
+				else:
+					neighbors.append(directions[i][2])
 		return neighbors
 
 	def __str__(self):

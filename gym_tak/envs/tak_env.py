@@ -40,8 +40,35 @@ class TakEnv(gym.Env):
 
 	def checkWin(self):
 		""" Temporary method to allow end user to test winning functionality """
-		hasWon = self.board.checkWin(self.currentPlayer)
-		return hasWon
+		player1HasWon = self.board.checkRoadWin(self.player1)
+		player2HasWon = self.board.checkRoadWin(self.player2)
+		if (player1HasWon and player2HasWon):
+			print("Both players have roads and have tied!")
+			return True
+		elif (player1HasWon):
+			print("Player 1 has won by making a road!")
+			return self.player1
+		elif (player2HasWon):
+			print("Player 2 has won by making a road!")
+			return self.player2
+
+		fullBoardWin = self.board.checkFullBoardWin()
+		if (fullBoardWin == True):
+			print("The board is full and the players have tied!")
+			return True
+		elif (fullBoardWin == self.player1.color[0]):
+			print("The board is full and Player 1 has won!")
+			return fullBoardWin
+		elif (fullBoardWin == self.player2.color[0]):
+			print("The board is full and Player 2 has won!")
+			return fullBoardWin
+
+		return False
+
+	def checkTak(self):
+		""" Temporary method to allow end user to test winning functionality """
+		hasTak = self.board.checkTak(self.currentPlayer)
+		return hasTak
 
 	def reset(self):
 		self.board = None
