@@ -17,11 +17,15 @@ class Board:
 	DIRECTION_LEFT = "left"
 	DIRECTION_RIGHT = "right"
 	DIRECTION_NONE = False
+	LIST_OF_DIRECTIONS = [DIRECTION_UP, DIRECTION_DOWN, DIRECTION_LEFT, DIRECTION_RIGHT]
+	LIST_OF_OPPOSITE_DIRECTIONS = [DIRECTION_DOWN, DIRECTION_UP, DIRECTION_RIGHT, DIRECTION_LEFT]
 
 	NODE_UP = "up"
 	NODE_DOWN = "down"
 	NODE_LEFT = "left"
 	NODE_RIGHT = "right"
+	LIST_OF_NODES = [NODE_UP, NODE_DOWN, NODE_LEFT, NODE_RIGHT]
+	LIST_OF_OPPOSITE_NODES = [NODE_DOWN, NODE_UP, NODE_RIGHT, NODE_LEFT]
 
 	def __init__(self, gameData):
 		self.height = gameData[0]
@@ -40,6 +44,9 @@ class Board:
 
 	def getCellByName(self, i):
 		return self.cells[i%self.width][int(i/self.height)]
+
+	def getCellCoordinatesByName(self, i):
+		return i%self.width, int(i/self.height)
 
 	def play(self, player, action):
 		if (self.moveState == Board.STATE_MOVE_CONTINUE and action[0] == Board.ACTION_PLACE):
@@ -199,9 +206,9 @@ class Board:
 			print("Unknown direction. Perhaps you haven't moved")
 			return False
 
-	def getCoordinatesOfDirection(self, startX, startY, direction, length=1):
+	def getCoordinatesOfDirection(self, startX, startY, direction, length=1, verbose=True):
 		if (not self.isIndexInBounds(startX, startY)):
-			print("Starting coordinates are out of bounds")
+			if verbose: print("Starting coordinates are out of bounds")
 			return -1, -1
 
 		if (direction == Board.DIRECTION_UP):
@@ -213,11 +220,11 @@ class Board:
 		elif (direction == Board.DIRECTION_RIGHT):
 			endX, endY = startX + length, startY
 		else:
-			print("Unknown direction for coordinates:",direction)
+			if verbose: print("Unknown direction for coordinates:",direction)
 			endX, endY = -1, -1
 
 		if (not self.isIndexInBounds(endX, endY)):
-			print("Ending coordinates are out of bounds")
+			if verbose: print("Ending coordinates are out of bounds")
 			return -1, -1
 		else:
 			return endX, endY
@@ -303,13 +310,47 @@ class Board:
 
 		for i in intersection:
 			# If there is an empty cell, return true
-			if (self.getCellByName(i).placeable):
+			cell = self.getCellByName(i)
+			if (cell.placeable):
 				return True
-			# if there is an intersection between all moveable pieces and this cell, return true
-			elif (False):
-				return True
+			# # If the player has a wall in the way of a road, player may be able to move it and win
+			if (cell.owner == player.color[0] and not cell.road and len(cell.pieces) > 2):
+				print ("Player may have tak if they move the wall in cell", cell.name)
+				return False
+			# If there is a wall of either color in the way, player may be able to flatten it and win
+			if (cell.flattenable):
+				print ("Player may have tak if they can flatten piece in cell", cell.name)
+				return False
+			# If there is an opposing piece in the way, player may be able to take over it by sliding a stack and win
+			if (cell.owner != player.color[0] and cell.stackable):
+				print ("Player may have tak if they can slide a stack to take over cell", cell.name)
+				print("Searching for towers:", self.searchForTowers(i, player))
+				return False
 			else:
 				return False
+
+	def searchForTowers(self, cellName, player):
+		x, y = self.getCellCoordinatesByName(cellName)
+
+		towersByDirection = [[],[],[],[]]
+		for direction in range(0, len(Board.LIST_OF_DIRECTIONS)):
+			# If we are searching up or down, use height. Else use width
+			dimension = self.height-1 if direction < 2 else self.width-1
+			for i in range (1, dimension):
+				# Get the coordinates of cells in specified direction. If out of bounds, break.
+				targetCoordinates = self.getCoordinatesOfDirection(x, y, Board.LIST_OF_DIRECTIONS[direction], i, verbose=False)
+				if (targetCoordinates == (-1, -1)):
+					break
+
+				# If the tower is tall enough and the player owns the tower, add it to the list
+				targetCell = self.cells[targetCoordinates[0]][targetCoordinates[1]]
+				if (len(targetCell.pieces) > i and targetCell.owner == player.color[0]):
+					towersByDirection[direction].append(targetCoordinates)
+
+		return towersByDirection
+
+	def getPossibleMoves(self, x, y, player, direction=DIRECTION_NONE):
+		return False
 
 	def getNodeNeighbors(self, neighbors, node, player):
 		ignoredNodes = [Board.NODE_UP, Board.NODE_DOWN, Board.NODE_LEFT, Board.NODE_RIGHT]

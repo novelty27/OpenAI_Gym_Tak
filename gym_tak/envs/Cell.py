@@ -9,6 +9,7 @@ class Cell:
 		self._owner = None
 		self._placeable = True
 		self._stackable = True
+		self._flattenable = False
 
 	def place(self, piece):
 		if (not self.placeable):
@@ -79,6 +80,10 @@ class Cell:
 	@property
 	def road(self):
 		return self.pieces[-1].isRoad
+
+	@property
+	def flattenable(self):
+		return self.pieces[-1].ableToBeFlattened
 
 	def __str__(self):
 		""" Return the top piece plus a count of how many pieces are in the cell's stack """
