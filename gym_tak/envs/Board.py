@@ -1,5 +1,6 @@
 from .Cell import Cell
 from .Piece import Piece
+from .Moves import Moves
 
 class Board: 
 
@@ -38,6 +39,7 @@ class Board:
 		self.moveState = Board.STATE_MOVE_UNSUCCESSFUL
 		self.moveCoordinate = False
 		self.moveDirection = Board.DIRECTION_NONE
+		self.moves = Moves()
 
 	def cells(self):
 		return self.cells
@@ -324,7 +326,12 @@ class Board:
 			# If there is an opposing piece in the way, player may be able to take over it by sliding a stack and win
 			if (cell.owner != player.color[0] and cell.stackable):
 				print ("Player may have tak if they can slide a stack to take over cell", cell.name)
-				print("Searching for towers:", self.searchForTowers(i, player))
+				towersByDirection = self.searchForTowers(i, player)
+				print("Searching for towers:", towersByDirection)
+				for direction in range(len(self.LIST_OF_DIRECTIONS)):
+					for tower in towersByDirection[direction]:
+						moves = self.getPossibleMoves(tower[0], tower[1], player, i, self.LIST_OF_OPPOSITE_DIRECTIONS[direction])
+						print("Tower:", tower, "Possible Moves:", moves)
 				return False
 			else:
 				return False
@@ -349,8 +356,15 @@ class Board:
 
 		return towersByDirection
 
-	def getPossibleMoves(self, x, y, player, direction=DIRECTION_NONE):
-		return False
+	def getPossibleMoves(self, x, y, player, targetCellName, direction):
+		startCell = self.cells[x][y]
+		targetX, targetY = self.getCellCoordinatesByName(targetCellName)
+		moves = []
+		minCells = self.getDistanceBetweenCells(x, y, targetX, targetY)
+		maxCells = min(len(startCell.pieces)-1, self.getCellDistanceToEdge(x, y, direction))
+		for i in range(minCells, maxCells+1):
+			moves = moves + self.moves.getMoves((len(startCell.pieces), i))
+		return moves
 
 	def getNodeNeighbors(self, neighbors, node, player):
 		ignoredNodes = [Board.NODE_UP, Board.NODE_DOWN, Board.NODE_LEFT, Board.NODE_RIGHT]
@@ -454,6 +468,26 @@ class Board:
 				else:
 					neighbors.append(directions[i][2])
 		return neighbors
+
+	def getCellDistanceToEdge(self, x, y, direction):
+		if (direction == Board.DIRECTION_UP):
+			return y
+		elif (direction == Board.DIRECTION_DOWN):
+			return self.height - y - 1
+		elif (direction == Board.DIRECTION_LEFT):
+			return x
+		elif (direction == Board.DIRECTION_RIGHT):
+			return self.width - x - 1
+		else:
+			return 0
+
+	def getDistanceBetweenCells(self, startX, startY, endX, endY):
+		if (startX == endX):
+			return abs(startY - endY)
+		elif (startY == endY):
+			return abs(startX - endX)
+		else:
+			return -1
 
 	def __str__(self):
 		boardString = ""
